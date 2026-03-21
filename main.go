@@ -19,8 +19,8 @@ func main() {
 fmt.Println("error reading files")
 	}
 	fileContent:=string(files)
-	internal.Validate(fileContent)
-
+	tetrice:=internal.Validate(fileContent)
+fmt.Println("tet",tetrice)
 	fmt.Println("validate the tetrice ")
 	fmt.Println("optimize the tetrice")
 }

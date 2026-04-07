@@ -3,98 +3,115 @@ package internal
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 )
 
-func Validate(text string) [][]int {
+func Validate(text string) ([][][]rune, error) {
 
-	tetrimonios,err:=parseTetros(text)
-if err!=nil{
-	fmt.Println("err:",err)
-	os.Exit(0)
-}
-if !ValidateTetros(tetrimonios){
-fmt.Println("error not validate")
-	os.Exit(0)
+	tetros, err := parseTetros(text)
+	if err != nil {
+		return nil, err
+	}
+
+	return tetros, nil
 }
 
-return nil
-}
-
-func parseTetros(input string) ([][]string, error) {
+func parseTetros(input string) ([][][]rune, error) {
 	rawBlocks := strings.Split(strings.TrimSpace(input), "\n\n")
-	var result [][]string
 
-	for _, block := range rawBlocks {
-		lines := strings.Split(block, "\n")
+	var tetros [][][]rune
+	var valid bool
 
+	tetros, valid = isValidTetrimino(rawBlocks)
+	if !valid {
+		return nil, errors.New("invalid tetrimino found")
+	}
+
+	return tetros, nil
+}
+
+func isValidTetrimino(block []string) ([][][]rune, bool) {
+	tetros := make([][][]rune, 0)
+	for _, tetro := range block {
+		tetro = strings.TrimSpace(tetro)
+		lines := strings.Split(tetro, "\n")
 		if len(lines) != 4 {
-			return nil, errors.New("invalid block: must have 4 lines")
-		}
 
-		// Check each line length
+			return nil, false
+		}
 		for _, line := range lines {
+			line = strings.TrimSpace(line)
 			if len(line) != 4 {
-				return nil, errors.New("invalid block: each line must be 4 characters")
-			}
-			//check the caractere in lines
-			for _,char:=range line{
-				if !(char=='#' || char =='.'){
-									return nil, errors.New("invalid charactere: the char must be . or # ")
 
+				return nil, false
+			}
+		}
+		//convert the tetro to matrice
+		matrix, err := blockToMatrix(strings.Join(lines, "\n"))
+		if err != nil {
+			return nil, false
+		}
+		tetros = append(tetros, matrix)
+
+		count := 0
+		connections := 0
+
+		// Iterate over each cell
+		for i := 0; i < 4; i++ {
+			for j := 0; j < 4; j++ {
+
+				// Validate character
+				if matrix[i][j] != '#' && matrix[i][j] != '.' {
+					return nil, false
+				}
+
+				// Process only '#'
+				if matrix[i][j] == '#' {
+					count++
+
+					if i > 0 && matrix[i-1][j] == '#' {
+						connections++
+					}
+					if i < 3 && matrix[i+1][j] == '#' {
+						connections++
+					}
+					if j > 0 && matrix[i][j-1] == '#' {
+						connections++
+					}
+					if j < 3 && matrix[i][j+1] == '#' {
+						connections++
+					}
 				}
 			}
-
 		}
 
-		result = append(result, lines)
-	}
+		if !(count == 4 && (connections == 6 || connections == 8)) {
+			return nil, false
+		}
 
-	return result, nil
+	}
+	return tetros, true
+
 }
-func ValidateTetros(blocks [][]string)bool{
-	for _, block := range blocks {
-		if !isValidTetrimino(block){
-return false
+
+func blockToMatrix(block string) ([][]rune, error) {
+	// Trim extra spaces/newlines
+	block = strings.TrimSpace(block)
+
+	// Split into lines
+	lines := strings.Split(block, "\n")
+	if len(lines) != 4 {
+		return nil, fmt.Errorf("expected 4 lines, got %d", len(lines))
+	}
+
+	matrix := make([][]rune, 4)
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if len(line) != 4 {
+			return nil, fmt.Errorf("line %d has length %d, expected 4", i, len(line))
 		}
-		
+		matrix[i] = []rune(line)
 	}
 
-
-return true
-}
-func isValidTetrimino(block []string) bool {
-	count := 0
-	connections := 0
-
-	for i := 0; i < 4; i++ {
-		for j := 0; j < 4; j++ {
-			if block[i][j] == '#' {
-				count++
-
-				// check neighbors
-				if i > 0 && block[i-1][j] == '#' {
-					connections++
-				}
-				if i < 3 && block[i+1][j] == '#' {
-					connections++
-				}
-				if j > 0 && block[i][j-1] == '#' {
-					connections++
-				}
-				if j < 3 && block[i][j+1] == '#' {
-					connections++
-				}
-			}
-		}
-	}
-
-	// must have exactly 4 blocks
-	if count != 4 {
-		return false
-	}
-
-	// valid connection counts
-	return connections == 6 || connections == 8
+	return matrix, nil
 }
